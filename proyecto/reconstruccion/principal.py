@@ -143,6 +143,9 @@ class HamiltonianoSimple(Hamiltoniano):
                         xj = 'x' + str(seg_j.id_segmento)
                         costo[(xi, xj)] = ang
                         D[seg_i.id_segmento, seg_j.id_segmento] = D[seg_j.id_segmento, seg_i.id_segmento] = ang
+         
+        A = eye(self.n_segmentos, format='lil') * (-(self.delta + self.gamma))
+        b = np.ones(self.n_segmentos) * self.delta
 
         for idx_grupo in range(len(self.segmentos_agrupados)):
             for seg_i, seg_j in product(self.segmentos_agrupados[idx_grupo], self.segmentos_agrupados[idx_grupo]):
@@ -153,9 +156,19 @@ class HamiltonianoSimple(Hamiltoniano):
                     costo[(xi, xj)] = 0.5
                     D[seg_i.id_segmento, seg_j.id_segmento] = D[seg_j.id_segmento, seg_i.id_segmento] = 0.5
 
+        for idx_grupo in range(len(self.segmentos_agrupados) - 1):
+            for seg_i, seg_j in product(self.segmentos_agrupados[idx_grupo], self.segmentos_agrupados[idx_grupo + 1]):
+                if seg_i.impacto_hasta == seg_j.impacto_desde:
+                    coseno = seg_i * seg_j
+
+                    if abs(coseno - 1) < self.epsilon:
+                        A[seg_i.id_segmento, seg_j.id_segmento] = A[seg_j.id_segmento, seg_i.id_segmento] = 1
+
+        A = A.tocsc()
+
         self.D = D
         qubo.minimize(quadratic=costo)
-        return qubo, costo
+        return qubo,-A,b
 
     def qu_solv(self):
         if self.A is None:
